@@ -1,4 +1,4 @@
-FROM ubuntu:2-:10
+FROM ubuntu:20.10
 
 LABEL maintainer="alberts.johann@gmail.com"
 
