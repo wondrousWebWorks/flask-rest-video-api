@@ -1,5 +1,5 @@
 from flask import Flask
-from flask_restful import Api, Resource, reqparse, abort
+from flask_restful import Api, Resource, reqparse, abort, fields, marshal_with
 from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
@@ -26,29 +26,36 @@ video_put_args.add_argument(
 video_put_args.add_argument(
     "likes", type=int, help="Number of likes required", required=True)
 
-videos = {}
-
-
-def abort_if_video_id_doesnt_exist(video_id):
-    if video_id not in videos:
-        abort(404, message="Invalid video ID!")
-
-
-def abort_if_video_exists(video_id):
-    if video_id in videos:
-        abort(409, message="Video with that ID already exists.")
+resource_fields = {
+    'id': fields.Integer,
+    'name': fields.String,
+    'views': fields.Integer,
+    'likes': fields.Integer
+}
 
 
 class Video(Resource):
+    @marshal_with(resource_fields)
     def get(self, video_id):
-        abort_if_video_id_doesnt_exist(video_id)
-        return videos[video_id]
+        result = VideoModel.query.filter_by(id=video_id).first()
+        if not result:
+            abort(404, message="Video not found")
+        return result
 
+    @marshal_with(resource_fields)
     def put(self, video_id):
-        abort_if_video_exists(video_id)
         args = video_put_args.parse_args()
-        videos[video_id] = args
-        return videos[video_id], 201
+        result = VideoModel.query.filter_by(id=video_id).first()
+        if result:
+            abort(409, message="Video with that ID already exists")
+        video = VideoModel(
+            id=video_id,
+            name=args['name'],
+            views=args['views'],
+            likes=args['likes'])
+        db.session.add(video)
+        db.session.commit()
+        return video, 201
 
     def delete(self, video_id):
         abort_if_video_id_doesnt_exist(video_id)
